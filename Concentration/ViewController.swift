@@ -12,6 +12,7 @@
  1- update UI in
     1- reset
     2- observe variables in the model
+    3- deinit Observers when we don't need 'em
  */
 
 import UIKit
@@ -48,9 +49,17 @@ class ViewController: UIViewController
     
     fileprivate func observeTimeCounter()
     {
-        observation = game.counterObject.observe(\.counter, options: [.old,.new], changeHandler: { (object, change) in
+        observation = game.counterObject.observe(\.counter, options: [.old,.new], changeHandler: {
+            [unowned self] //unowned because we are sure that object 'game' is gonna be deinited at some point in our future code, while 'ViewController' will remain since it's related to the View layer which is only gonna disappear if the user closed the app...
+            (object, change) in
             self.stopwatchLabel.text = String(format: "%.1f", object.counter)
         })
+    }
+    
+    fileprivate func closeObserverOnTimeCounter()
+    {
+        //TODO:- Figure out what are we gonna do with this...
+        observation = nil
     }
     
     fileprivate func updateUI()
