@@ -11,11 +11,13 @@
  me7rm's responsiblities are
  1- update UI in
     1- reset
+    2- observe variables in the model
  */
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController
+{
 
     
     var game: Concentration!
@@ -25,7 +27,7 @@ class ViewController: UIViewController {
     @IBOutlet weak var stopwatchLabel: UILabel!
     
     @IBOutlet var cardButtons: [UIButton]!
-    
+    var observation: NSKeyValueObservation?
     
     override func viewDidLoad()
     {
@@ -44,9 +46,11 @@ class ViewController: UIViewController {
         scoreLabel.text = "_SCORE: \(game.score)"
     }
     
-    fileprivate func updateStopwatchLabel()
+    fileprivate func observeTimeCounter()
     {
-        stopwatchLabel.text = String(format: "%.1f", game.counter)
+        observation = game.counterObject.observe(\.counter, options: [.old,.new], changeHandler: { (object, change) in
+            self.stopwatchLabel.text = String(format: "%.1f", object.counter)
+        })
     }
     
     fileprivate func updateUI()
@@ -54,11 +58,11 @@ class ViewController: UIViewController {
         updateCardsFlipState()
         updateFlipsCountLabel()
         updateScoreLabel()
-        updateStopwatchLabel()
     }
     
     fileprivate func runChecks()
     {
+        //is Cards Number Even
         if cardButtons.count % 2 != 0
         {
             fatalError("cards cannot be of an Odd value!")
@@ -69,6 +73,7 @@ class ViewController: UIViewController {
     {
         runChecks()
         game = Concentration(numberOfPairs: (cardButtons.count / 2))
+        observeTimeCounter()
     }
 
     @IBAction func touchCard(_ sender: UIButton)
@@ -78,7 +83,7 @@ class ViewController: UIViewController {
             flipCard(at: cardNumber)
         } else
         {
-            fatalError("Chosen Card was not in the cardButtons!\nCheck your outlets!")
+            fatalError("Chosen Card was not in the cardButtons!*Check your outlets!*")
         }
     }
     
@@ -145,6 +150,11 @@ class ViewController: UIViewController {
         game.reinitGame(numberOfPairs: cardButtons.count / 2)
         resetCards()
     }
+    
+}
+
+class Observers: NSObject
+{
     
 }
 

@@ -31,7 +31,7 @@
     1- if a card alreadyFlipped = true and a mismatch occured, then score -1
  
  MARK:- BUGS Found
- 1- user can choose the same card which is not handled in our logic (solved but there is a better solution am sure of it)
+ 1- user can choose the same card which is not handled in our logic (SQUISHED!)
  2- Score is bugged (SQUISHED!)
  
  
@@ -40,14 +40,26 @@
 
 import Foundation
 
+class Observables: NSObject
+{
+    @objc dynamic var counter: Double
+    
+    init(counter: Double)
+    {
+        self.counter = counter
+    }
+}
+
 class Concentration
 {
     var cards = [Card]()
     var flipsCount = 0
     var score = 0
-    @objc dynamic var counter = 0.0
+    
+    var counterObject = Observables(counter: 0.0)
+    
     var timer = Timer()
-    var indexOfOneAndOnlyFaceUpCard: Int? //index of the only match to the chosen card
+    var onlyMatchUpCardIndex: Int? //index of the only match to the chosen card
     
     
     //MARK: New Game
@@ -64,7 +76,7 @@ class Concentration
     fileprivate func resetTimer()
     {
         timer.invalidate()
-        counter = 0.0
+        counterObject.counter = 0.0
     }
     
     fileprivate func resetCards()
@@ -96,7 +108,7 @@ class Concentration
         }
         //then face up the choosen card @index
         cards[index].isFacedUp = !cards[index].isFacedUp
-        indexOfOneAndOnlyFaceUpCard = index
+        onlyMatchUpCardIndex = index
     }
     
     func isAllCardsMatched() -> Bool
@@ -126,7 +138,7 @@ class Concentration
         }
         
         cards[index].isFacedUp = true
-        indexOfOneAndOnlyFaceUpCard = nil
+        onlyMatchUpCardIndex = nil
         
         return isMatch
     }
@@ -137,25 +149,25 @@ class Concentration
         if !cards[index].isMatched //if chosen card is not already matched
         {
             
-            if let matchIndex = indexOfOneAndOnlyFaceUpCard, matchIndex != index
+            if let matchIndex = onlyMatchUpCardIndex, matchIndex != index
             {
                 if areChosenCardsAMatch(at: matchIndex, andAt: index)
                 {
                     score += 2
                 }
-                else if cards[matchIndex].isFacedUpBefore && cards[index].isFacedUpBefore
+                else if cards[matchIndex].isFacedUpBefore && cards[index].isFacedUpBefore //if user did the same mismatch twice
                 {
                     //if both cards have been seen before, -2
                     score -= 2
                 }
-                else if cards[matchIndex].isFacedUpBefore || cards[index].isFacedUpBefore
+                else if cards[index].isFacedUpBefore // if user inspected the same card twice
                 {
                     //if one card only has been faced up before, -1
                     score -= 1
                 }
                 cards[matchIndex].isFacedUpBefore = true
             }
-            else if let matchIndex = indexOfOneAndOnlyFaceUpCard, matchIndex == index
+            else if let matchIndex = onlyMatchUpCardIndex, matchIndex == index
             {
                 self.faceDownAfterChoosing(cardAt: index)
                 score -= (cards[index].isFacedUpBefore) ? 1 : 0
@@ -180,17 +192,18 @@ class Concentration
         handleCardPickingLogic(index)
         cards[index].isFacedUpBefore = true
         //Cheating here
-        print(indexOfOneAndOnlyFaceUpCard)
+        print(onlyMatchUpCardIndex ?? "None")
     }
     
     fileprivate func setTimer()
     {
+        counterObject.counter = 0.0
         timer = Timer.scheduledTimer(timeInterval: 0.1, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
     }
     
     @objc fileprivate func updateTimer()
     {
-        counter += 0.1
+        counterObject.counter += 0.1
     }
     
     fileprivate func initializeGame(_ numberOfPairs: Int) {
