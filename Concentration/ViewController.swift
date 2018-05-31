@@ -21,7 +21,7 @@ class ViewController: UIViewController
 {
 
     
-    var game: Concentration!
+    private var game: Concentration!
     
     @IBOutlet weak var flipCountLabel: UILabel!
     @IBOutlet weak var scoreLabel: UILabel!
@@ -39,12 +39,12 @@ class ViewController: UIViewController
     
     fileprivate func updateFlipsCountLabel()
     {
-        flipCountLabel.text = "_FLIPS: \(game.flipsCount)"
+        flipCountLabel.text = "_flips: \(game.flipsCount)"
     }
     
     fileprivate func updateScoreLabel()
     {
-        scoreLabel.text = "_SCORE: \(game.score)"
+        scoreLabel.text = "_score: \(game.score)"
     }
     
     fileprivate func observeTimeCounter()
@@ -81,7 +81,8 @@ class ViewController: UIViewController
     func startGame()
     {
         runChecks()
-        game = Concentration(numberOfPairs: (cardButtons.count / 2))
+        let numberOfPairs = (cardButtons.count / 2)
+        game = Concentration(numberOfPairs: numberOfPairs)
         observeTimeCounter()
     }
 
@@ -139,7 +140,7 @@ class ViewController: UIViewController
     {
         if emoji[card.identifier] == nil, emojiChoices.count > 0
         {
-            let randomIndex = Int(arc4random_uniform(UInt32(emojiChoices.count - 1)))
+            let randomIndex = (emojiChoices.count).arc4random
             emoji[card.identifier] = emojiChoices.remove(at: randomIndex) //this removes the emoji and returns it
         }
         return emoji[card.identifier] ?? "?"
@@ -162,8 +163,17 @@ class ViewController: UIViewController
     
 }
 
-class Observers: NSObject
+extension Int
 {
-    
+    ///Returns a random Int between range of 0 ..< (self)
+    var arc4random: Int
+    {
+        if self > 0
+        {return Int(arc4random_uniform(UInt32(self)))}
+        else if self < 0
+        {return -Int(arc4random_uniform(UInt32(abs(self))))}
+        else
+        {return 0}
+    }
 }
 

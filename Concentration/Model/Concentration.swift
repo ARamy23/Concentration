@@ -9,7 +9,7 @@
 
 /*
  Roles of this model class
- 1- New Game function (_)
+ 1- New Game function (X)
     1- should face down all cards (X)
     2- should reset score (X)
     3- should reset flips Count (X)
@@ -17,11 +17,11 @@
     5- should be automatically triggered with an option in an alert popup at the end (_)
         * try setting an observer on flipsCount after it's more than or equal to cards.count (which is the least number of turns to win the game
     6- should make a new set of identifiers (X)
- 2- Should have a way of being observed without violating the MVC princibles (_)
+ 2- Should have a way of being observed without violating the MVC princibles (X)
     *Which is*
     * the model and the view are not to be releated unless through a me7rm (a.k.a. Controller)
  
- 3- Should keep track of Scores (_)
+ 3- Should keep track of Scores (X)
     _____Score gaining rules_____
     1- a match = score + 2
     2- if a match occured between 2 secs, score += 1
@@ -52,14 +52,44 @@ class Observables: NSObject
 
 class Concentration
 {
-    var cards = [Card]()
+    private(set) var cards = [Card]()
     var flipsCount = 0
     var score = 0
     
     var counterObject = Observables(counter: 0.0)
+    var firstTimerSnapshot : Double!
+    var secondTimerSnapshot: Double!
     
     var timer = Timer()
-    var onlyMatchUpCardIndex: Int? //index of the only match to the chosen card
+    var indexOfOnlyMatchUpCardToSelectedCard: Int?
+    {
+        get
+        {
+            var foundIndex: Int?
+            for index in cards.indices
+            {
+                if cards[index].isFacedUp
+                {
+                    if foundIndex == nil
+                    {
+                        foundIndex = index
+                    }else
+                    {
+                        return nil
+                    }
+                }
+            }
+            return foundIndex
+        }
+        
+        set
+        {
+            for index in cards.indices
+            {
+                cards[index].isFacedUp = (index == newValue) //if loobed index = setValue of indexOfOneAndOnly, make isFacedup true
+            }
+        }
+    }
     
     
     //MARK: New Game
@@ -108,7 +138,6 @@ class Concentration
         }
         //then face up the choosen card @index
         cards[index].isFacedUp = !cards[index].isFacedUp
-        onlyMatchUpCardIndex = index
     }
     
     func isAllCardsMatched() -> Bool
@@ -121,7 +150,7 @@ class Concentration
                 return false
             }
         }
-        //else all cards are matched is true
+        //else all cards are matched is true and therefor an alertView will showup and ask the user if he wants to replay
         return true
     }
     
@@ -130,7 +159,7 @@ class Concentration
     {
         var isMatch = false
         
-        if cards[matchIndex].identifier == cards[index].identifier
+        if cards[matchIndex] == cards[index]
         {
             cards[matchIndex].isMatched = true
             cards[index].isMatched = true
@@ -138,44 +167,49 @@ class Concentration
         }
         
         cards[index].isFacedUp = true
-        onlyMatchUpCardIndex = nil
         
         return isMatch
     }
     
     
-    fileprivate func handleCardPickingLogic(_ index: Int)
+    fileprivate func handleCardPickingLogic(_ firstChosenCardIndex: Int)
     {
-        if !cards[index].isMatched //if chosen card is not already matched
+        if !cards[firstChosenCardIndex].isMatched //if chosen card is not already matched
         {
-            
-            if let matchIndex = onlyMatchUpCardIndex, matchIndex != index
+            let firstSnapshot = counterObject.counter
+            if let secondChosenCardIndex = indexOfOnlyMatchUpCardToSelectedCard, secondChosenCardIndex != firstChosenCardIndex
             {
-                if areChosenCardsAMatch(at: matchIndex, andAt: index)
+                if areChosenCardsAMatch(at: secondChosenCardIndex, andAt: firstChosenCardIndex)
                 {
                     score += 2
                 }
-                else if cards[matchIndex].isFacedUpBefore && cards[index].isFacedUpBefore //if user did the same mismatch twice
+                else if cards[secondChosenCardIndex].isFacedUpBefore && cards[firstChosenCardIndex].isFacedUpBefore //if user did the same mismatch twice
                 {
                     //if both cards have been seen before, -2
                     score -= 2
                 }
-                else if cards[index].isFacedUpBefore // if user inspected the same card twice
+                else if cards[firstChosenCardIndex].isFacedUpBefore // if user inspected the same card twice
                 {
                     //if one card only has been faced up before, -1
                     score -= 1
                 }
-                cards[matchIndex].isFacedUpBefore = true
+                cards[secondChosenCardIndex].isFacedUpBefore = true
+                let secondSnapshot = counterObject.counter
+                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
             }
-            else if let matchIndex = onlyMatchUpCardIndex, matchIndex == index
+            else if let secondChosenCardIndex = indexOfOnlyMatchUpCardToSelectedCard, secondChosenCardIndex == firstChosenCardIndex
             {
-                self.faceDownAfterChoosing(cardAt: index)
-                score -= (cards[index].isFacedUpBefore) ? 1 : 0
-                cards[index].isFacedUpBefore = true
+                self.faceDownAfterChoosing(cardAt: firstChosenCardIndex)
+                score -= (cards[firstChosenCardIndex].isFacedUpBefore) ? 1 : 0
+                cards[firstChosenCardIndex].isFacedUpBefore = true
+                let secondSnapshot = counterObject.counter
+                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
             }
             else
             {
-                self.faceDownAfterChoosing(cardAt: index)
+                self.faceDownAfterChoosing(cardAt: firstChosenCardIndex)
+                let secondSnapshot = counterObject.counter
+                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
             }
             flipsCount += 1
         }
@@ -189,10 +223,11 @@ class Concentration
     
     func chooseCard(at index: Int)
     {
+        assert(cards.indices.contains(index), "Concentration.chooseCard(at: \(index)): passed index is not in the cards.indicies")
         handleCardPickingLogic(index)
         cards[index].isFacedUpBefore = true
         //Cheating here
-        print(onlyMatchUpCardIndex ?? "None")
+        print(indexOfOnlyMatchUpCardToSelectedCard ?? "None")
     }
     
     fileprivate func setTimer()
@@ -206,7 +241,37 @@ class Concentration
         counterObject.counter += 0.1
     }
     
-    fileprivate func initializeGame(_ numberOfPairs: Int) {
+    fileprivate func handleTimerLogic(firstSnapshot: Double, secondSnapshot: Double)
+    {
+        /*
+         we need to store counter value at each flip
+         then when the user flip again
+         the new counter is subtracted from the old counter
+         if subtraction is less than 1 sec, we add +2
+         else if subtraction is less than 3 sec and more than 1 sec, we add +1
+         else if subtraction is less than 5 and more than 3, score is unaffected
+         else if subtraction is more than 5, score -= 1
+        */
+        
+        let subtraction = secondSnapshot - firstSnapshot
+        if(subtraction <= 1)
+        {
+            score += 2
+        }
+        else if(1 < subtraction && subtraction <= 3)
+        {
+            score += 1
+        }
+        else if(5 <= subtraction)
+        {
+            score -= 1
+        }
+        
+    }
+    
+    fileprivate func initializeGame(_ numberOfPairs: Int)
+    {
+        assert(numberOfPairs > 0, "Concentration.init(numberOfPairs: \(numberOfPairs): you must have at least 1 pair of cards")
         for _ in 1 ... numberOfPairs
         {
             let card = Card()
