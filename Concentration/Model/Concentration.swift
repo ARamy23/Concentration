@@ -14,7 +14,7 @@
     2- should reset score (X)
     3- should reset flips Count (X)
     4- should reset timer (X)
-    5- should be automatically triggered with an option in an alert popup at the end (_)
+    5- should be automatically triggered with an option in an alert popup at the end (X)
         * try setting an observer on flipsCount after it's more than or equal to cards.count (which is the least number of turns to win the game
     6- should make a new set of identifiers (X)
  2- Should have a way of being observed without violating the MVC princibles (X)
@@ -30,38 +30,43 @@
     _____Score penalty rules______
     1- if a card alreadyFlipped = true and a mismatch occured, then score -1
  
+ 4- Handle Selection and deselection easily (X)
+ 
  MARK:- BUGS Found
  1- user can choose the same card which is not handled in our logic (SQUISHED!)
  2- Score is bugged (SQUISHED!)
  
  
- P.S.: try to execute the SOLID Princibles and what you've read from Clean Code book
+ P.S.: try to execute the SOLID Princibles and what you've read from Clean Code book (X)
  */
 
 import Foundation
 
 class Observables: NSObject
 {
-    @objc dynamic var counter: Double
+    
+    @objc dynamic var timerCounter: Double
     
     init(counter: Double)
     {
-        self.counter = counter
+        self.timerCounter = counter
     }
 }
 
 class Concentration
 {
     private(set) var cards = [Card]()
-    var flipsCount = 0
-    var score = 0
     
-    var counterObject = Observables(counter: 0.0)
-    var firstTimerSnapshot : Double!
-    var secondTimerSnapshot: Double!
+    private(set) var flipsCount = 0
     
-    var timer = Timer()
-    var indexOfOnlyMatchUpCardToSelectedCard: Int?
+    private(set) var score = 0
+    
+    /// Timer Counter Object to allow for observing in the Controller Layer which is init with 0.0
+    private(set) var counterObject = Observables(counter: 0.0)
+    
+    private var timer = Timer()
+    
+    private var indexOfOnlyMatchUpCardToSelectedCard: Int?
     {
         get
         {
@@ -106,7 +111,7 @@ class Concentration
     fileprivate func resetTimer()
     {
         timer.invalidate()
-        counterObject.counter = 0.0
+        counterObject.timerCounter = 0.0
     }
     
     fileprivate func resetCards()
@@ -128,9 +133,10 @@ class Concentration
         resetCards()
     }
     
+    /// Changes the faceUp property of all cards to false if
+    /// 2 cards are faced up
     fileprivate func faceDownAfterChoosing(cardAt index: Int) {
-        //if no cards are facedup or two cards are facedup
-        //face down all the cards
+        
         for flipdownIndex in cards.indices
         {
             if flipdownIndex != index
@@ -140,6 +146,7 @@ class Concentration
         cards[index].isFacedUp = !cards[index].isFacedUp
     }
     
+    /// is game over
     func isAllCardsMatched() -> Bool
     {
         for card in cards
@@ -176,7 +183,6 @@ class Concentration
     {
         if !cards[firstChosenCardIndex].isMatched //if chosen card is not already matched
         {
-            let firstSnapshot = counterObject.counter
             if let secondChosenCardIndex = indexOfOnlyMatchUpCardToSelectedCard, secondChosenCardIndex != firstChosenCardIndex
             {
                 if areChosenCardsAMatch(at: secondChosenCardIndex, andAt: firstChosenCardIndex)
@@ -194,22 +200,18 @@ class Concentration
                     score -= 1
                 }
                 cards[secondChosenCardIndex].isFacedUpBefore = true
-                let secondSnapshot = counterObject.counter
-                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
+                
             }
             else if let secondChosenCardIndex = indexOfOnlyMatchUpCardToSelectedCard, secondChosenCardIndex == firstChosenCardIndex
             {
                 self.faceDownAfterChoosing(cardAt: firstChosenCardIndex)
                 score -= (cards[firstChosenCardIndex].isFacedUpBefore) ? 1 : 0
                 cards[firstChosenCardIndex].isFacedUpBefore = true
-                let secondSnapshot = counterObject.counter
-                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
+                
             }
             else
             {
                 self.faceDownAfterChoosing(cardAt: firstChosenCardIndex)
-                let secondSnapshot = counterObject.counter
-                handleTimerLogic(firstSnapshot: firstSnapshot, secondSnapshot: secondSnapshot)
             }
             flipsCount += 1
         }
@@ -232,41 +234,13 @@ class Concentration
     
     fileprivate func setTimer()
     {
-        counterObject.counter = 0.0
+        counterObject.timerCounter = 0.0
         timer = Timer.scheduledTimer(timeInterval: 0.1, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
     }
     
     @objc fileprivate func updateTimer()
     {
-        counterObject.counter += 0.1
-    }
-    
-    fileprivate func handleTimerLogic(firstSnapshot: Double, secondSnapshot: Double)
-    {
-        /*
-         we need to store counter value at each flip
-         then when the user flip again
-         the new counter is subtracted from the old counter
-         if subtraction is less than 1 sec, we add +2
-         else if subtraction is less than 3 sec and more than 1 sec, we add +1
-         else if subtraction is less than 5 and more than 3, score is unaffected
-         else if subtraction is more than 5, score -= 1
-        */
-        
-        let subtraction = secondSnapshot - firstSnapshot
-        if(subtraction <= 1)
-        {
-            score += 2
-        }
-        else if(1 < subtraction && subtraction <= 3)
-        {
-            score += 1
-        }
-        else if(5 <= subtraction)
-        {
-            score -= 1
-        }
-        
+        counterObject.timerCounter += 0.1
     }
     
     fileprivate func initializeGame(_ numberOfPairs: Int)
