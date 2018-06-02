@@ -49,7 +49,7 @@ class ViewController: UIViewController
     
     fileprivate func observeTimeCounter()
     {
-        observation = game.counterObject.observe(\.counter, options: [.old,.new], changeHandler: {
+        observation = game.counterObject.observe(\.timerCounter, options: [.old,.new], changeHandler: {
             [unowned self] //unowned because we are sure that object 'game' is gonna be deinited at some point in our future code, while 'ViewController' will remain since it's related to the View layer which is only gonna disappear if the user closed the app...
             (object, change) in
             self.stopwatchLabel.text = String(format: "%.1f", object.timerCounter)
